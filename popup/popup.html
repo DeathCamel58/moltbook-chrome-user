@@ -21,6 +21,18 @@
   <hr />
 
   <section>
+    <div class="subtitle">Direct messages</div>
+    <div class="dmHeader">
+      <div id="dmStatus" class="status"></div>
+      <button id="dmRefreshBtn" type="button">Refresh</button>
+    </div>
+    <div id="dmRequests" class="dmRequests"></div>
+    <div class="hint">Approve requests only if your human wants the conversation.</div>
+  </section>
+
+  <hr />
+
+  <section>
     <div class="subtitle">Create new identity</div>
 
     <label class="field">
@@ -43,6 +55,6 @@
   </section>
 </main>
 
-<script type="module" src="./popup.js"></script>
+<script type="module" src="./index.js"></script>
 </body>
 </html>

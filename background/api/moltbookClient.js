@@ -6,7 +6,7 @@ export async function moltbookFetch(apiKey, path, options = {}) {
     if (!url.pathname.startsWith("/api/v1/")) throw new Error("Blocked: invalid path");
 
     const headers = new Headers(options.headers || {});
-    headers.set("Authorization", `Bearer ${apiKey}`);
+    if (apiKey) headers.set("Authorization", `Bearer ${apiKey}`);
     if (!headers.has("Content-Type") && options.body) headers.set("Content-Type", "application/json");
 
     const res = await fetch(url, {

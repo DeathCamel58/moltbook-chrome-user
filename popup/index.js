@@ -1,20 +1,30 @@
-const $ = (sel) => document.querySelector(sel);
+import { bgMessage } from "./api.js";
+import { $, setStatus, escapeHtml, openVerification } from "./view.js";
 
-function bgMessage(payload) {
-    return chrome.runtime.sendMessage(payload);
+let activeAgentId = null;
+
+function setDmStatus(text) {
+    $("#dmStatus").textContent = text || "";
 }
 
-function setStatus(text) {
-    $("#status").textContent = text || "";
+function extractRequestList(data) {
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.requests)) return data.requests;
+    return [];
 }
 
-function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+function extractCounts(data) {
+    const pending = data?.pending_requests ?? data?.pendingRequests ?? data?.pending ?? 0;
+    const unread = data?.unread_messages ?? data?.unreadMessages ?? data?.unread ?? 0;
+    return { pending, unread };
 }
 
-function openVerification(claimUrl) {
-    if (!claimUrl) return;
-    chrome.tabs.create({ url: claimUrl });
+function formatRequestLabel(req) {
+    const id = req?.conversation_id || req?.conversationId || req?.id || "(unknown)";
+    const from = req?.from || req?.requester || req?.sender || req?.agent_name || req?.agentName || "";
+    const parts = [`Conversation: ${id}`];
+    if (from) parts.push(`From: ${from}`);
+    return parts.join(" • ");
 }
 
 async function getClaimStatusForAgent(agent) {
@@ -31,12 +41,14 @@ async function refreshAgents() {
     const res = await bgMessage({ type: "agents/list" });
     if (!res.ok) throw new Error(res.error);
 
-    const { agents, activeAgentId } = res.data;
+    const { agents, activeAgentId: activeAgentIdValue } = res.data;
+    activeAgentId = activeAgentIdValue;
     const wrap = $("#agents");
     wrap.innerHTML = "";
 
     if (!agents.length) {
         setStatus("No identities yet. Register one below.");
+        await refreshDm();
         return;
     }
 
@@ -147,6 +159,8 @@ async function refreshAgents() {
             }
         })();
     }
+
+    await refreshDm();
 }
 
 async function registerNew() {
@@ -172,6 +186,79 @@ async function registerNew() {
     await refreshAgents();
 }
 
+async function refreshDm() {
+    const wrap = $("#dmRequests");
+    wrap.innerHTML = "";
+
+    if (!activeAgentId) {
+        setDmStatus("Select an identity to check DMs.");
+        return;
+    }
+
+    try {
+        setDmStatus("Checking DMs…");
+
+        const [checkRes, requestsRes] = await Promise.all([
+            bgMessage({ type: "dm/check" }),
+            bgMessage({ type: "dm/requests" })
+        ]);
+
+        if (!checkRes.ok) throw new Error(checkRes.error);
+        if (!requestsRes.ok) throw new Error(requestsRes.error);
+
+        const { pending, unread } = extractCounts(checkRes.data || {});
+        setDmStatus(`Pending requests: ${pending} • Unread messages: ${unread}`);
+
+        const requests = extractRequestList(requestsRes.data || {});
+        if (!requests.length) {
+            const empty = document.createElement("div");
+            empty.className = "dmMeta";
+            empty.textContent = "No pending requests.";
+            wrap.append(empty);
+            return;
+        }
+
+        for (const req of requests) {
+            const row = document.createElement("div");
+            row.className = "dmRow";
+
+            const meta = document.createElement("div");
+            meta.className = "dmMeta";
+            meta.textContent = formatRequestLabel(req);
+
+            const actions = document.createElement("div");
+            const approveBtn = document.createElement("button");
+            approveBtn.textContent = "Approve";
+            approveBtn.addEventListener("click", async () => {
+                const conversationId =
+                    req?.conversation_id || req?.conversationId || req?.id;
+                if (!conversationId) return;
+                const ok = confirm("Approve this DM request? Your human should decide.");
+                if (!ok) return;
+                approveBtn.disabled = true;
+                try {
+                    const res = await bgMessage({
+                        type: "dm/requests/approve",
+                        conversationId
+                    });
+                    if (!res.ok) throw new Error(res.error);
+                    await refreshDm();
+                } catch (e) {
+                    setDmStatus(`Error: ${e.message}`);
+                } finally {
+                    approveBtn.disabled = false;
+                }
+            });
+
+            actions.append(approveBtn);
+            row.append(meta, actions);
+            wrap.append(row);
+        }
+    } catch (e) {
+        setDmStatus(`Error: ${e.message}`);
+    }
+}
+
 $("#createBtn").addEventListener("click", async () => {
     try {
         setStatus("Registering…");
@@ -180,6 +267,10 @@ $("#createBtn").addEventListener("click", async () => {
     } catch (e) {
         setStatus(`Error: ${e.message}`);
     }
+});
+
+$("#dmRefreshBtn").addEventListener("click", async () => {
+    await refreshDm();
 });
 
 refreshAgents().catch((e) => setStatus(`Error: ${e.message}`));

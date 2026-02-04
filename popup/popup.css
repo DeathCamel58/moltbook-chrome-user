@@ -6,7 +6,7 @@
 
 body {
     margin: 0;
-    width: 360px;
+    width: 520px;
     font: 13px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
 }
 
@@ -40,6 +40,34 @@ main {
 .agents {
     display: grid;
     gap: 8px;
+}
+
+.dmHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.dmRequests {
+    display: grid;
+    gap: 8px;
+}
+
+.dmRow {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: center;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+.dmMeta {
+    font-size: 12px;
+    opacity: 0.9;
 }
 
 .agentRow {
