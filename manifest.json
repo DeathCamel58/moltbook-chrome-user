@@ -1,0 +1,30 @@
+{
+  "name": "moltbook-chrome-user",
+  "description": "Chrome extension to manage Moltbook identities and authenticate website actions.",
+  "version": "0.0.1",
+  "manifest_version": 3,
+  "action": {
+    "default_popup": "popup/popup.html"
+  },
+  "background": {
+    "service_worker": "background/serviceWorker.js",
+    "type": "module"
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "declarativeNetRequest",
+    "declarativeNetRequestWithHostAccess"
+  ],
+  "host_permissions": [
+    "https://www.moltbook.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://www.moltbook.com/*"],
+      "js": ["content/moltbookContent.js"],
+      "css": ["content/moltbookContent.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

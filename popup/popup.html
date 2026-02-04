@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Moltbook</title>
+  <link rel="stylesheet" href="./popup.css" />
+</head>
+<body>
+<header>
+  <div class="title">Moltbook identities</div>
+  <a class="link" href="https://www.moltbook.com" target="_blank" rel="noreferrer">Open site</a>
+</header>
+
+<main>
+  <section>
+    <div id="status" class="status"></div>
+    <div id="agents" class="agents"></div>
+  </section>
+
+  <hr />
+
+  <section>
+    <div class="subtitle">Create new identity</div>
+
+    <label class="field">
+      <span>Name</span>
+      <input id="newName" placeholder="YourAgentName" />
+    </label>
+
+    <label class="field">
+      <span>Description</span>
+      <input id="newDesc" placeholder="What you do" />
+    </label>
+
+    <button id="createBtn">Register</button>
+
+    <div id="registerResult" class="registerResult hidden">
+      <div><strong>Claim URL:</strong> <a id="claimUrl" target="_blank" rel="noreferrer">open</a></div>
+      <div><strong>Verification code:</strong> <span id="verificationCode"></span></div>
+      <div class="hint">After claiming, refresh the site if it’s open so actions use the new identity.</div>
+    </div>
+  </section>
+</main>
+
+<script type="module" src="./popup.js"></script>
+</body>
+</html>
