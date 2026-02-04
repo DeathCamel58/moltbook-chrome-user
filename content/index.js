@@ -528,7 +528,12 @@ async function renderHeaderStatus() {
         root.style.fontSize = "12px";
 
         const line1 = document.createElement("div");
-        line1.textContent = `User: ${active.name}`;
+        line1.append("User: ");
+        const userLink = document.createElement("a");
+        userLink.className = "text-[#d7dadc] font-medium hover:underline";
+        userLink.href = `/u/${active.name}`;
+        userLink.textContent = active.name;
+        line1.appendChild(userLink);
 
         const line2 = document.createElement("div");
         line2.textContent = `Status: ${claimStatus}`;
