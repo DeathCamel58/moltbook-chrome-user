@@ -197,12 +197,17 @@ async function handleComment(action, { postId, commentId }, btn) {
             return true;
         }
 
-        const content = prompt("Comment on this post:");
+        const content = commentId ? prompt("Reply to this comment:") : prompt("Comment on this post:");
         if (!content) return true;
 
         try {
             btn.classList.add("mbcu-pending");
-            const res = await bgMessage({ type: "moltbook/post/comment", postId, content });
+            const res = await bgMessage({
+                type: "moltbook/post/comment",
+                postId,
+                content,
+                ...(commentId ? { parentId: commentId } : {})
+            });
             if (!res?.ok) throw new Error(res?.error || "Request failed");
             toast("Comment posted", "ok");
         } catch (err) {
@@ -342,8 +347,88 @@ function renderCommentRow(comment) {
     votes.append(upBtn, document.createTextNode(String(score)), downBtn);
     actions.appendChild(votes);
 
+    const replyBtn = document.createElement("button");
+    replyBtn.type = "button";
+    replyBtn.className = "text-[#818384] hover:text-[#d7dadc]";
+    replyBtn.textContent = "Reply";
+    if (id) replyBtn.dataset.commentId = id;
+
+    replyBtn.addEventListener("click", async (e) => {
+        console.log("Reply Button clicked");
+        e.preventDefault();
+        e.stopPropagation();
+        if (!id) return;
+        const content = prompt("Reply to this comment:");
+        if (!content) return;
+        try {
+            replyBtn.disabled = true;
+            const postId = findPostIdFromLocation();
+            const res = await bgMessage({
+                type: "moltbook/post/comment",
+                postId,
+                content,
+                parentId: id
+            });
+            if (!res?.ok) throw new Error(res?.error || "Request failed");
+            toast("Reply posted", "ok");
+            await refreshComments("top");
+        } catch (err) {
+            toast(err.message || "Reply failed", "error");
+        } finally {
+            replyBtn.disabled = false;
+        }
+    });
+
+    actions.appendChild(replyBtn);
     row.append(meta, body, actions);
     return row;
+}
+
+function renderCommentComposer(postId) {
+    const wrap = document.createElement("div");
+    wrap.className = "mb-4";
+
+    const label = document.createElement("div");
+    label.className = "text-sm text-[#818384] mb-2";
+    label.textContent = "Add a comment";
+
+    const textarea = document.createElement("textarea");
+    textarea.className = "w-full bg-[#0f0f10] text-[#d7dadc] border border-[#343536] rounded-lg p-2 text-sm";
+    textarea.rows = 3;
+    textarea.placeholder = "Great insight!";
+
+    const actions = document.createElement("div");
+    actions.className = "flex items-center gap-2 mt-2";
+
+    const submit = document.createElement("button");
+    submit.type = "button";
+    submit.textContent = "Post";
+    submit.className = "px-3 py-1 rounded-md text-sm bg-[#272729] text-white";
+
+    submit.addEventListener("click", async () => {
+        const content = textarea.value.trim();
+        if (!content) return;
+        try {
+            submit.disabled = true;
+            const res = await bgMessage({
+                type: "moltbook/post/comment",
+                postId,
+                content
+            });
+            if (!res?.ok) throw new Error(res?.error || "Request failed");
+            textarea.value = "";
+            toast("Comment posted", "ok");
+            await refreshComments("top");
+        } catch (err) {
+            toast(err.message || "Comment failed", "error");
+        } finally {
+            submit.disabled = false;
+        }
+    });
+
+    actions.appendChild(submit);
+    wrap.append(label, textarea, actions);
+    return wrap;
 }
 
 async function refreshComments(sort = "top") {
@@ -363,8 +448,12 @@ async function refreshComments(sort = "top") {
 
         const comments = normalizeCommentList(res.data || {});
         container.innerHTML = "";
+        container.appendChild(renderCommentComposer(postId));
         if (!comments.length) {
-            container.textContent = "No comments yet.";
+            const empty = document.createElement("div");
+            empty.className = "text-sm text-[#818384]";
+            empty.textContent = "No comments yet.";
+            container.appendChild(empty);
             return;
         }
 
