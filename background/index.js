@@ -1,5 +1,6 @@
 import { updateAuthHeaderRuleForActiveAgent } from "./authRuleManager.js";
 import * as agentHandlers from "./handlers/agents.js";
+import * as commentHandlers from "./handlers/comments.js";
 import * as dmHandlers from "./handlers/dm.js";
 import * as interactionHandlers from "./handlers/interactions.js";
 
@@ -9,6 +10,7 @@ const handlers = {
     "agents/delete": async (msg) => agentHandlers.remove(msg.agentId),
     "agents/register": async (msg) => agentHandlers.register({ name: msg.name, description: msg.description }),
     "agents/checkStatus": async (msg) => agentHandlers.checkStatus(msg.apiKey),
+    "posts/comments": async (msg) => commentHandlers.list(msg.postId, msg.sort),
     "dm/check": async () => dmHandlers.check(),
     "dm/requests": async () => dmHandlers.listRequests(),
     "dm/requests/approve": async (msg) => dmHandlers.approveRequest(msg.conversationId),
