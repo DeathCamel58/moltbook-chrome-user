@@ -37,8 +37,17 @@ function isOnSubmoltPage() {
     return /\/m\/[^/]+/.test(window.location.pathname);
 }
 
+function getSubmoltFromLocation() {
+    const m = window.location.pathname.match(/\/m\/([^/]+)/);
+    return m?.[1] || null;
+}
+
 function isOnHomePage() {
     return window.location.pathname === "/" || window.location.pathname === "";
+}
+
+function getSubmoltMainColumn() {
+    return document.querySelector("body > div.flex-1 > div > main > div.space-y-3");
 }
 
 function getPostCommentsContainer() {
@@ -460,6 +469,118 @@ function renderCommentComposer(postId) {
     return wrap;
 }
 
+function renderPostComposer(submolt) {
+    const wrap = document.createElement("div");
+    wrap.className = "mb-6 bg-[#1a1a1b] border border-[#343536] rounded-lg p-4";
+    wrap.dataset.moltbookPostComposer = "true";
+
+    const header = document.createElement("div");
+    header.className = "text-sm text-[#818384] mb-3";
+    header.textContent = `Create a post in m/${submolt}`;
+
+    const title = document.createElement("input");
+    title.className = "w-full bg-[#0f0f10] text-[#d7dadc] border border-[#343536] rounded-lg p-2 text-sm mb-3";
+    title.type = "text";
+    title.placeholder = "Title";
+
+    const typeRow = document.createElement("div");
+    typeRow.className = "flex items-center gap-2 mb-3";
+
+    const textBtn = document.createElement("button");
+    textBtn.type = "button";
+    textBtn.className = "px-3 py-1 rounded-md text-xs bg-[#272729] text-white";
+    textBtn.textContent = "Text";
+
+    const linkBtn = document.createElement("button");
+    linkBtn.type = "button";
+    linkBtn.className = "px-3 py-1 rounded-md text-xs bg-[#1a1a1b] text-[#818384] border border-[#343536]";
+    linkBtn.textContent = "Link";
+
+    const contentWrap = document.createElement("div");
+    const content = document.createElement("textarea");
+    content.className = "w-full bg-[#0f0f10] text-[#d7dadc] border border-[#343536] rounded-lg p-2 text-sm";
+    content.rows = 4;
+    content.placeholder = "Write your post...";
+    contentWrap.appendChild(content);
+
+    const urlWrap = document.createElement("div");
+    urlWrap.style.display = "none";
+    const url = document.createElement("input");
+    url.className = "w-full bg-[#0f0f10] text-[#d7dadc] border border-[#343536] rounded-lg p-2 text-sm";
+    url.type = "url";
+    url.placeholder = "https://example.com";
+    urlWrap.appendChild(url);
+
+    const actions = document.createElement("div");
+    actions.className = "flex items-center gap-2 mt-3";
+
+    const submit = document.createElement("button");
+    submit.type = "button";
+    submit.textContent = "Post";
+    submit.className = "px-3 py-1 rounded-md text-sm bg-[#272729] text-white";
+
+    let postType = "text";
+    const setType = (type) => {
+        postType = type;
+        const isText = type === "text";
+        textBtn.className = isText
+            ? "px-3 py-1 rounded-md text-xs bg-[#272729] text-white"
+            : "px-3 py-1 rounded-md text-xs bg-[#1a1a1b] text-[#818384] border border-[#343536]";
+        linkBtn.className = !isText
+            ? "px-3 py-1 rounded-md text-xs bg-[#272729] text-white"
+            : "px-3 py-1 rounded-md text-xs bg-[#1a1a1b] text-[#818384] border border-[#343536]";
+        contentWrap.style.display = isText ? "" : "none";
+        urlWrap.style.display = isText ? "none" : "";
+    };
+
+    textBtn.addEventListener("click", () => setType("text"));
+    linkBtn.addEventListener("click", () => setType("link"));
+
+    submit.addEventListener("click", async () => {
+        const titleText = title.value.trim();
+        if (!titleText) {
+            toast("Title is required", "error");
+            return;
+        }
+
+        const contentText = content.value.trim();
+        const urlText = url.value.trim();
+        if (postType === "text" && !contentText) {
+            toast("Content is required", "error");
+            return;
+        }
+        if (postType === "link" && !urlText) {
+            toast("URL is required", "error");
+            return;
+        }
+
+        try {
+            submit.disabled = true;
+            const res = await bgMessage({
+                type: "moltbook/post/create",
+                submolt,
+                title: titleText,
+                content: postType === "text" ? contentText : undefined,
+                url: postType === "link" ? urlText : undefined
+            });
+            if (!res?.ok) throw new Error(res?.error || "Request failed");
+            title.value = "";
+            content.value = "";
+            url.value = "";
+            toast("Post created", "ok");
+        } catch (err) {
+            toast(err.message || "Post failed", "error");
+        } finally {
+            submit.disabled = false;
+        }
+    });
+
+    typeRow.append(textBtn, linkBtn);
+    actions.appendChild(submit);
+    wrap.append(header, title, typeRow, contentWrap, urlWrap, actions);
+    return wrap;
+}
+
 async function refreshComments(sort = "top") {
     console.log("[moltbook-chrome-user] Refreshing comments");
     if (!isOnPostPageWithComments()) return;
@@ -495,6 +616,16 @@ async function refreshComments(sort = "top") {
     } catch (e) {
         container.textContent = `Failed to load comments: ${e.message}`;
     }
+}
+
+function ensureSubmoltComposer() {
+    if (!isOnSubmoltPage()) return;
+    const submolt = getSubmoltFromLocation();
+    if (!submolt) return;
+    const main = getSubmoltMainColumn();
+    if (!main) return;
+    if (main.querySelector("[data-moltbook-post-composer='true']")) return;
+    main.prepend(renderPostComposer(submolt));
 }
 
 async function renderHeaderStatus() {
@@ -598,6 +729,7 @@ document.addEventListener("click", handleClick, true);
 console.log("[moltbook-chrome-user] content script active");
 
 renderHeaderStatus().then(() => console.log("[moltbook-chrome-user] header rendered"));
+ensureSubmoltComposer();
 
 function scheduleInitialCommentsRefresh() {
     if (!isOnPostPage()) return;
@@ -620,6 +752,27 @@ function scheduleInitialCommentsRefresh() {
         }
     }, 500);
 }
+
+function scheduleSubmoltComposer() {
+    if (!isOnSubmoltPage()) return;
+
+    const attempt = () => {
+        ensureSubmoltComposer();
+        return Boolean(getSubmoltMainColumn());
+    };
+
+    if (attempt()) return;
+
+    let tries = 0;
+    const timer = setInterval(() => {
+        tries += 1;
+        if (attempt() || tries >= 10) {
+            clearInterval(timer);
+        }
+    }, 500);
+}
+
+scheduleSubmoltComposer();
 
 if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", scheduleInitialCommentsRefresh, { once: true });

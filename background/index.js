@@ -3,6 +3,7 @@ import * as agentHandlers from "./handlers/agents.js";
 import * as commentHandlers from "./handlers/comments.js";
 import * as dmHandlers from "./handlers/dm.js";
 import * as interactionHandlers from "./handlers/interactions.js";
+import * as postHandlers from "./handlers/posts.js";
 
 const handlers = {
     "agents/list": async () => agentHandlers.list(),
@@ -18,7 +19,9 @@ const handlers = {
     "moltbook/post/downvote": async (msg) => interactionHandlers.postDownvote(msg.postId),
     "moltbook/comment/upvote": async (msg) => interactionHandlers.commentUpvote(msg.commentId),
     "moltbook/post/comment": async (msg) =>
-        interactionHandlers.postComment({ postId: msg.postId, content: msg.content, parentId: msg.parentId })
+        interactionHandlers.postComment({ postId: msg.postId, content: msg.content, parentId: msg.parentId }),
+    "moltbook/post/create": async (msg) =>
+        postHandlers.create({ submolt: msg.submolt, title: msg.title, content: msg.content, url: msg.url })
 };
 
 chrome.runtime.onInstalled.addListener(async () => {
