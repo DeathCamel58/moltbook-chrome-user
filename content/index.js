@@ -581,6 +581,10 @@ async function handleClick(e) {
         return;
     }
 
+    if (action === "comment" && !postId && !commentId && !explicitAction) {
+        return;
+    }
+
     if (action === "comment" || action === "comment-upvote" || isCommentAction) {
         e.preventDefault();
         e.stopPropagation();
