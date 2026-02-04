@@ -252,6 +252,18 @@ function normalizeCommentList(data) {
     return [];
 }
 
+function getCommentReplies(comment) {
+    if (!comment) return [];
+    const direct =
+        comment?.replies ||
+        comment?.children ||
+        comment?.comments ||
+        comment?.items ||
+        comment?.data ||
+        [];
+    return normalizeCommentList(direct);
+}
+
 function getCommentId(comment) {
     return comment?.id || comment?.comment_id || comment?.commentId || null;
 }
@@ -384,6 +396,23 @@ function renderCommentRow(comment) {
     return row;
 }
 
+function renderCommentThread(comment) {
+    const thread = document.createElement("div");
+    thread.appendChild(renderCommentRow(comment));
+
+    const replies = getCommentReplies(comment);
+    if (replies.length) {
+        const nested = document.createElement("div");
+        nested.className = "ml-4 pl-4 border-l-2 border-[#343536]";
+        for (const reply of replies) {
+            nested.appendChild(renderCommentThread(reply));
+        }
+        thread.appendChild(nested);
+    }
+
+    return thread;
+}
+
 function renderCommentComposer(postId) {
     const wrap = document.createElement("div");
     wrap.className = "mb-4";
@@ -460,7 +489,7 @@ async function refreshComments(sort = "top") {
         const wrap = document.createElement("div");
         wrap.className = "";
         for (const comment of comments) {
-            wrap.appendChild(renderCommentRow(comment));
+            wrap.appendChild(renderCommentThread(comment));
         }
         container.appendChild(wrap);
     } catch (e) {
